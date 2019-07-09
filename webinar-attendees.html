@@ -30,6 +30,13 @@
       padding: 8px;
       background-color: #FFF;
     }
+
+    .popup h3 {
+      margin: 0;
+    }
+    .popup p {
+      margin: 0;
+    }
   </style>
 </head>
 
@@ -61,50 +68,78 @@
   </div>
 
   <script>
-      const map = new mapboxgl.Map({
-          container: 'map',
-          style: carto.basemaps.darkmatter,
-          center: [0, 42],
-          zoom: 1,
-          scrollZoom: false
-      });
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: carto.basemaps.darkmatter,
+      center: [0, 42],
+      zoom: 1,
+      scrollZoom: false
+    });
 
-      const nav = new mapboxgl.NavigationControl({
-          showCompass: false
-      });
-      map.addControl(nav, 'top-left');
-      map.addControl(new mapboxgl.FullscreenControl(), 'top-left');
+    const nav = new mapboxgl.NavigationControl({
+      showCompass: false
+    });
+    map.addControl(nav, 'top-left');
+    map.addControl(new mapboxgl.FullscreenControl(), 'top-left');
 
-      carto.setDefaultAuth({
-          username: 'pabloalonso',
-          apiKey: 'default_public'
-      });
+    carto.setDefaultAuth({
+      username: 'pabloalonso',
+      apiKey: 'default_public'
+    });
 
-      const source = new carto.source.Dataset('webinar_registrations');
+    const source = new carto.source.Dataset('webinar_registrations');
 
-      const viz = new carto.Viz(`
-          @count: clusterCount()
-          width: ramp(linear(@count, viewportMIN(@count), viewportMAX(@count)), [3,8])
-          color: red
-          strokeWidth: 0
-      `);
+    const viz = new carto.Viz(`
+      @city: $city
+      @count: clusterCount()
+      width: ramp(linear(@count, viewportMIN(@count), viewportMAX(@count)), [3,12])
+      color: red
+      strokeWidth: 0
+    `);
 
-      const layer = new carto.Layer('layer', source, viz);
+    const layer = new carto.Layer('layer', source, viz);
 
-      layer.addTo(map);
+    layer.addTo(map);
 
-      const airportLayer = new AsBridge.VLBridge({
-        carto: carto,
-        map: map,
-        layer: layer,
-        source: source
-      });
+    const interactivity = new carto.Interactivity(layer);
+    interactivity.on('featureHover', updatePopup);
 
-      airportLayer.category('#typeCat', 'city', {
-        readOnly: false
-      });
+    // Define pop-up
+    const popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false
+    });
 
-      airportLayer.build();
+    function updatePopup(event) {
+      if (event.features.length > 0) {
+         const vars = event.features[0].variables;
+         popup.setHTML(`
+           <div class="popup">
+             <h3 class ="h3">${vars.city.value}</h3>
+             <p class="description open-sans">Count: ${vars.count.value}</h3>
+           </div>
+         `);
+         popup.setLngLat([event.coordinates.lng, event.coordinates.lat]);
+         if (!popup.isOpen()) {
+           popup.addTo(map);
+         }
+       } else {
+         // popup.remove();
+       }
+    }
+
+    const widgets = new AsBridge.VLBridge({
+      carto: carto,
+      map: map,
+      layer: layer,
+      source: source
+    });
+
+    widgets.category('#typeCat', 'city', {
+      readOnly: false
+    });
+
+    widgets.build();
   </script>
 </body>
 
